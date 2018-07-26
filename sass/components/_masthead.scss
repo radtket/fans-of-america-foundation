@@ -1,0 +1,28 @@
+header.masthead {
+	background-image: url('../img/hero-soldiers.png');
+	background-repeat: no-repeat;
+	padding-top: 8rem;
+	padding-bottom: 8rem;
+	background-size: cover;
+	position: relative;
+
+	.overlay {
+		position: absolute;
+		background-color: rgba($color-red, .75);
+		height: 100%;
+		width: 100%;
+		top: 0;
+		left: 0;
+		// opacity: 0.3;
+	}
+
+	.btn {
+		margin: 0 4px;
+	}
+
+	@media (min-width: 768px) {
+		padding-top: 12rem;
+		padding-bottom: 12rem;
+
+	}
+}

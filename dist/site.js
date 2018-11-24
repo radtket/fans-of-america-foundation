@@ -2,10 +2,10 @@
  * DO NOT OVERRIDE THIS FILE.
  * Generated with `npm run build`
  *
- * wdg-wordpress-theme - WDG's opinionated WordPress theme
- * @version 0.7.0
- * @author WDG
- * @link https://www.webdevelopmentgroup.com/
+ * fansofamericafoundation - 
+ * @version 1.0.0
+ * @author undefined
+ * @link undefined
  */
 
 

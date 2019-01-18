@@ -1,334 +1,146 @@
-const pkg = require("./package.json");
-const gulp = require("gulp");
-const gulpPlugins = require("gulp-load-plugins")();
-const { sequence } = gulpPlugins;
-let browserSync = require("browser-sync").create();
+import gulp from "gulp";
+import autoprefixer from "autoprefixer";
+import browsersync from "browser-sync";
+import cssnano from "cssnano";
+import del from "del";
+import eslint from "gulp-eslint";
+import htmlmin from "gulp-htmlmin";
+import imagemin from "gulp-imagemin";
+import newer from "gulp-newer";
+import plumber from "gulp-plumber";
+import postcss from "gulp-postcss";
+import rename from "gulp-rename";
+import sass from "gulp-sass";
+import webpack from "webpack";
+import webpackstream from "webpack-stream";
+import babel from "gulp-babel";
+import sassGlob from "gulp-sass-glob";
+import sourcemaps from "gulp-sourcemaps";
+import webpackconfig from "./webpack.config";
+
+browsersync.create();
 
 // project
 const project = { root: __dirname };
-project.assets = `${project.root}/assets`;
-project.dist = `${project.root}/dist`;
-project.fonts = `${project.root}/fonts`;
-project.img = `${project.root}/img`;
-project.inc = `${project.root}/includes`;
-project.js = `${project.root}/js`;
-project.lang = `${project.root}/languages`;
-project.node = `${project.root}/node_modules`;
-project.sass = `${project.root}/sass`;
-project.vendor = `${project.root}/vendor`;
+project.dist = `${project.root}/docs`;
 
-const banner = `/*!
- * DO NOT OVERRIDE THIS FILE.
- * Generated with \`npm run build\`
- *
- * ${pkg.name} - ${pkg.description}
- * @version ${pkg.version}
- * @author ${pkg.author.name}
- * @link ${pkg.author.url}
- */
+project.assets = `${project.root}/src`;
+project.img = `${project.assets}/img`;
+project.scss = `${project.assets}/scss`;
+project.js = `${project.assets}/js`;
+project.favicon = `${project.assets}/favicon`;
 
-`;
+// BrowserSync
+function browserSync(done) {
+	browsersync.init({
+		server: {
+			baseDir: `${project.dist}/`
+		},
+		port: 3000
+	});
+	done();
+}
 
-// build
-gulp.task(
-	"build",
-	sequence("build:vendor", ["build:img", "build:css", "build:js"])
-);
+// BrowserSync Reload
+function browserSyncReload(done) {
+	browsersync.reload();
+	done();
+}
 
-// img
-gulp.task("build:img", () => {
-	const { imagemin, size } = gulpPlugins;
+// Clean assets
+function clean() {
+	return del([`${project.dist}`]);
+}
+
+// Copy Favicon Assets
+function favicon() {
+	return gulp.src(`${project.favicon}/**/*`).pipe(gulp.dest(`${project.dist}`));
+}
+
+// Minify HTML
+function html() {
 	return gulp
-		.src(`${project.img}/**/*.{png,jpg,jpeg,gif,svg}`)
-		.pipe(imagemin())
+		.src(`${project.assets}/index.html`)
+		.pipe(htmlmin({ collapseWhitespace: true }))
+		.pipe(gulp.dest(`${project.dist}`));
+}
+
+// Optimize Images
+function images() {
+	return gulp
+		.src(`${project.img}/**/*`)
+		.pipe(newer(`${project.dist}/img/`))
 		.pipe(
-			size({
-				showFiles: true,
-				title: "imagemin"
-			})
-		)
-		.pipe(gulp.dest(`${project.img}`));
-});
-
-// css
-gulp.task("build:css", () => {
-	const {
-		autoprefixer,
-		csso,
-		filter,
-		header,
-		plumber,
-		rename,
-		sass,
-		sassGlob,
-		size,
-		sourcemaps,
-		util
-	} = gulpPlugins;
-	const filterCSS = filter(["**/*.css"], { restore: true });
-	const sync = () =>
-		browserSync ? browserSync.stream({ match: "**/*.css" }) : util.noop();
-
-	return (
-		gulp
-			.src([`${project.sass}/**/*.scss`, `!_*.scss`])
-			.pipe(plumber())
-			.pipe(sourcemaps.init())
-			.pipe(sassGlob())
-			.pipe(
-				sass({
-					outputStyle: "expanded"
-				}).on("error", sass.logError)
-			)
-			.pipe(
-				autoprefixer({
-					browsers: ["last 2 versions", "ie 11"]
-				})
-			)
-			.pipe(header(banner))
-			.pipe(
-				size({
-					showFiles: true,
-					title: "sass"
-				})
-			)
-			.pipe(sourcemaps.write("."))
-			.on("error", util.log)
-			.pipe(gulp.dest(project.dist))
-			.pipe(sync())
-
-			// minified version
-			.pipe(filterCSS)
-			.pipe(rename({ suffix: ".min" }))
-			.pipe(csso())
-			.on("error", util.log)
-			.pipe(
-				size({
-					showFiles: true,
-					title: "sass"
-				})
-			)
-			.pipe(sourcemaps.write("."))
-			.on("error", util.log)
-			.pipe(filterCSS.restore)
-
-			// create both files
-			.pipe(gulp.dest(project.dist))
-			.pipe(sync())
-	);
-});
-
-// js
-gulp.task("build:js", () => {
-	// edit these
-	let globals = {
-		bows: "bows",
-		jquery: "jQuery",
-		modernizr: "Modernizr"
-	};
-
-	// Note: do not edit these lines
-	const del = require("del");
-	const rollup = require("rollup");
-	const vinylPaths = require("vinyl-paths");
-	const es2015 = require("rollup-plugin-buble");
-	const uglify = require("rollup-plugin-uglify");
-	const prettyBytes = require("pretty-bytes");
-	const { util } = gulpPlugins;
-	const { colors: chalk } = util;
-
-	const log = (() => {
-		const cache = Object.create(null);
-
-		return (fileName, msg) => {
-			if (!(fileName in cache)) {
-				cache[fileName] = Object.create(null);
-			}
-
-			if (msg in cache[fileName]) {
-				return;
-			}
-
-			const title = chalk.cyan("rollup") + " ";
-			util.log(title + chalk.blue(fileName) + " " + msg);
-
-			cache[fileName][msg] = true;
-		};
-	})();
-
-	const getPaths = path => {
-		const fileName = path.replace(project.js + "/", "").slice(0, -3);
-		const dest = `${project.dist}/${fileName}.js`;
-		const minDest = `${project.dist}/${fileName}.min.js`;
-		let moduleName = fileName[0].toUpperCase() + fileName.slice(1);
-
-		moduleName
-			.replace(/(\-|\_|\.|\s)+(.)?/g, function(match, separator, chr) {
-				return chr ? chr.toUpperCase() : "";
-			})
-			.replace(/(^|\/)([A-Z])/g, function(match, separator, chr) {
-				return match.toLowerCase();
-			});
-
-		return { path, fileName, dest, minDest, moduleName };
-	};
-
-	const writeFiles = (bundle, path, fileName, moduleName, dest) => {
-		const opts = {
-			globals,
-			sourceMap: true,
-			moduleName,
-			banner,
-			exports: "named",
-			format: "umd",
-			dest
-		};
-
-		const result = bundle.generate(opts);
-		let size = Buffer.byteLength(result.code, "utf8");
-		size = prettyBytes(size);
-		size = chalk.magenta(size);
-
-		log(fileName, chalk.magenta(size));
-
-		return bundle.write(opts);
-	};
-
-	// delete dist files
-	del.sync([`${project.dist}/**/*.js`]);
-
-	// read js files
-	return gulp.src([`${project.js}/**/*.js`, `!_*.js`], { read: false }).pipe(
-		vinylPaths(path => {
-			const fileName = path.replace(project.js + "/", "");
-
-			// skip if file has a _ as the first character
-			if (fileName[0] === "_") {
-				return Promise.resolve();
-			}
-
-			return new Promise((resolve, reject) => {
-				const { fileName, dest, minDest, moduleName } = getPaths(path);
-				// compile original file
-				return (
-					rollup
-						.rollup({
-							entry: path,
-							external: Object.keys(globals),
-							onwarn: msg => log(`${fileName}.js`, msg),
-							plugins: [es2015()]
-						})
-						// write original file
-						.then(bundle =>
-							writeFiles(bundle, path, `${fileName}.js`, moduleName, dest)
-						)
-
-						// compile minified file
-						.then(() =>
-							rollup.rollup({
-								entry: path,
-								external: Object.keys(globals),
-								onwarn: msg => log(`${fileName}.min.js`, msg),
-								plugins: [es2015(), uglify()]
-							})
-						)
-						// write minified file
-						.then(bundle =>
-							writeFiles(
-								bundle,
-								path,
-								`${fileName}.min.js`,
-								moduleName,
-								minDest
-							)
-						)
-
-						.then(() => {
-							const sync = () =>
-								browserSync ? browserSync.reload() : util.noop();
-							sync();
-						})
-
-						// handle promise
-						.then(resolve)
-						.catch(reject)
-				);
-			}).catch(err => console.log(err));
-		})
-	);
-});
-
-// vendor
-gulp.task("build:vendor", [
-	"build:vendor:copyFromNpm",
-	"build:vendor:modernizr"
-]);
-
-gulp.task("build:vendor:copyFromNpm", () => {
-	const { size } = gulpPlugins;
-	const npmFiles = Object.keys(pkg.dependencies).map(
-		name => `${project.node}/${name}/**/*`
-	);
-
-	return gulp
-		.src(npmFiles, { base: project.node })
-		.pipe(size({ title: "vendor" }))
-		.pipe(gulp.dest(project.vendor));
-});
-
-gulp.task("build:vendor:modernizr", () => {
-	const { header, modernizr, rename, sourcemaps, uglify } = gulpPlugins;
-
-	return (
-		gulp
-			.src([`${project.sass}/**/*.scss`, `${project.js}/**/*.js`])
-			.pipe(
-				modernizr({
-					options: [
-						"setClasses",
-						"addTest",
-						"html5printshiv",
-						"testProp",
-						"fnBind"
+			imagemin([
+				imagemin.gifsicle({ interlaced: true }),
+				imagemin.jpegtran({ progressive: true }),
+				imagemin.optipng({ optimizationLevel: 5 }),
+				imagemin.svgo({
+					plugins: [
+						{
+							removeViewBox: false,
+							collapseGroups: true
+						}
 					]
 				})
-			)
-			.pipe(gulp.dest(`${project.vendor}/modernizr`))
+			])
+		)
+		.pipe(gulp.dest(`${project.dist}/img/`));
+}
 
-			// minified version
-			.pipe(sourcemaps.init())
-			.pipe(rename({ suffix: ".min" }))
-			.pipe(
-				uglify({
-					preserveComments: "license"
-				})
-			)
-			.pipe(header(banner))
-			.pipe(sourcemaps.write("."))
-			.pipe(gulp.dest(`${project.vendor}/modernizr`))
+// CSS task
+function css() {
+	return gulp
+		.src(`${project.scss}/**/*.scss`)
+		.pipe(plumber())
+		.pipe(sourcemaps.init())
+		.pipe(sassGlob())
+		.pipe(sass({ outputStyle: "expanded" }))
+		.pipe(gulp.dest(`${project.dist}/css/`))
+		.pipe(rename({ suffix: ".min" }))
+		.pipe(postcss([autoprefixer(), cssnano()]))
+		.pipe(gulp.dest(`${project.dist}/css/`))
+		.pipe(browsersync.stream());
+}
+
+// Lint scripts
+function scriptsLint() {
+	return gulp
+		.src([`${project.js}/**/*`, "./gulpfile.babel.js"])
+		.pipe(plumber())
+		.pipe(eslint())
+		.pipe(eslint.format());
+	// .pipe(eslint.failAfterError());
+}
+
+// Transpile, concatenate and minify scripts
+function scripts() {
+	return (
+		gulp
+			.src([`${project.js}/**/*`])
+			.pipe(babel())
+			.pipe(plumber())
+			.pipe(webpackstream(webpackconfig, webpack))
+			// folder only, filename is specified in webpack config
+			.pipe(gulp.dest(`${project.dist}/js/`))
+			.pipe(browsersync.stream())
 	);
-});
+}
 
-// watch
-gulp.task("watch", () => {
-	gulp.watch(`${project.js}/**/*.js`, ["build:js"]);
-	gulp.watch(`${project.sass}/**/*.scss`, ["build:css"]);
-	gulp.watch(`${project.img}/**/*.{png,jpg,jpeg,gif,svg}`, ["build:img"]);
-});
+// Watch files
+function watchFiles() {
+	gulp.watch(`${project.assets}/*.html`, html);
+	gulp.watch(`${project.scss}/**/*`, css);
+	gulp.watch(`${project.js}/**/*`, gulp.series(scriptsLint, scripts));
+	gulp.watch(`${project.img}/**/*`, images);
+}
 
-gulp.task("browserSync", function() {
-	browserSync.init({
-		server: {
-			baseDir: `${project.root}`
-		}
-	});
-});
+// define complex tasks
+const js = gulp.series(scriptsLint, scripts);
+const build = gulp.series(clean, gulp.parallel(html, css, favicon, images, js));
+const watch = gulp.parallel(watchFiles, browserSync);
 
-gulp.task("watch:sync", ["browserSync"], function() {
-	gulp.watch(`${project.sass}/**/*.scss`, ["build:css"]);
-	gulp.watch(`${project.js}/**/*.js`, ["build:js-sync"]);
-	gulp.watch(`${project.root}/**/*.php`).on("change", browserSync.reload);
-	gulp
-		.watch(`${project.img}/**/*.{png,jpg,jpeg,gif,svg}`)
-		.on("change", browserSync.reload);
-});
+// export tasks
+export { html, favicon, images, css, js, clean, build, watch };
+
+export default build;

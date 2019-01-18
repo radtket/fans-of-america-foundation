@@ -1,0 +1,25 @@
+.features-icons {
+	background: #29a8df; /* Old browsers */
+	background: -moz-linear-gradient(left, #29a8df 0%, #1c5c93 100%); /* FF3.6-15 */
+	background: -webkit-linear-gradient(left, #29a8df 0%,#1c5c93 100%); /* Chrome10-25,Safari5.1-6 */
+	background: linear-gradient(to right, #29a8df 0%,#1c5c93 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+	filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#29a8df', endColorstr='#1c5c93',GradientType=1 );
+  padding-top: 7rem;
+  padding-bottom: 7rem;
+  .features-icons-item {
+    max-width: 20rem;
+    .features-icons-icon {
+      height: 7rem;
+      i {
+        font-size: 4.5rem;
+      }
+    }
+    &:hover {
+      .features-icons-icon {
+        i {
+          font-size: 5rem;
+        }
+      }
+    }
+  }
+}

@@ -1,1 +1,0 @@
-{"version":3,"sources":["admin.scss"],"names":[],"mappings":";;;;;;;;;AAAA,6B,CAEE,6B,CAFF,wC,CAME,sB,CAIF,sBAAA,a,CACC,c","file":"admin.min.css","sourcesContent":[".u-wp-editor-hide-tools {\n\tlabel {\n\t\tmargin-bottom: -40px !important;\n\t}\n\n\t.wp-editor-tools {\n\t\tdisplay: none !important;\n\t}\n}\n\n.carbon-Separator:not(:first-child) {\n\tmargin-top: 3em;\n}\n"]}
